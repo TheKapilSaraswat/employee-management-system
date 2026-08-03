@@ -1,0 +1,13 @@
+target
+.git
+.github
+node_modules
+src/test
+sql
+scripts
+.env
+*.iml
+.idea
+.vscode
+*.db
+data
