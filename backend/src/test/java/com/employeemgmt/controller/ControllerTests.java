@@ -314,7 +314,7 @@ class ControllerTests {
     @DisplayName("GET /api/attendance returns records")
     @WithMockUser
     void attendance_getAll() throws Exception {
-        when(attendanceService.getAllAttendances(null, null, null)).thenReturn(List.of());
+        when(attendanceService.getAllAttendances(null, null, null, null)).thenReturn(List.of());
         mockMvc.perform(get("/api/attendance"))
                 .andExpect(status().isOk());
     }
@@ -550,8 +550,8 @@ class ControllerTests {
     void reports_attendanceSummary() throws Exception {
         when(reportService.getAttendanceSummary(any(), any())).thenReturn(List.of());
         mockMvc.perform(get("/api/reports/attendance-summary")
-                        .param("start_date", "2024-01-01")
-                        .param("end_date", "2024-01-31"))
+                        .param("startDate", "2024-01-01")
+                        .param("endDate", "2024-01-31"))
                 .andExpect(status().isOk());
     }
 

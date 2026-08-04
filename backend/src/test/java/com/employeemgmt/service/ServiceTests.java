@@ -494,28 +494,28 @@ class ServiceTests {
         @DisplayName("getAllAttendances with no filters returns all")
         void getAllAttendances_noFilters() {
             when(attendanceRepository.findAll()).thenReturn(List.of(new Attendance()));
-            assertEquals(1, attendanceService.getAllAttendances(null, null, null).size());
+            assertEquals(1, attendanceService.getAllAttendances(null, null, null, null).size());
         }
 
         @Test
         @DisplayName("getAllAttendances with employeeId")
         void getAllAttendances_byEmployee() {
             when(attendanceRepository.findByEmployeeId("emp-1")).thenReturn(List.of(new Attendance()));
-            assertEquals(1, attendanceService.getAllAttendances("emp-1", null, null).size());
+            assertEquals(1, attendanceService.getAllAttendances("emp-1", null, null, null).size());
         }
 
         @Test
         @DisplayName("getAllAttendances with date range")
         void getAllAttendances_byDateRange() {
             when(attendanceRepository.findByDateBetween(any(), any())).thenReturn(List.of(new Attendance()));
-            assertEquals(1, attendanceService.getAllAttendances(null, LocalDate.now(), LocalDate.now()).size());
+            assertEquals(1, attendanceService.getAllAttendances(null, LocalDate.now(), LocalDate.now(), null).size());
         }
 
         @Test
         @DisplayName("getAllAttendances with employeeId and date range")
         void getAllAttendances_byEmployeeAndDateRange() {
             when(attendanceRepository.findByEmployeeIdAndDateBetween(any(), any(), any())).thenReturn(List.of(new Attendance()));
-            assertEquals(1, attendanceService.getAllAttendances("emp-1", LocalDate.now(), LocalDate.now()).size());
+            assertEquals(1, attendanceService.getAllAttendances("emp-1", LocalDate.now(), LocalDate.now(), null).size());
         }
 
         @Test
@@ -925,31 +925,58 @@ class ServiceTests {
             Department dept = new Department();
             dept.setId("dept-1");
             dept.setName("Engineering");
+
+            Employee active1 = new Employee();
+            active1.setId("emp-1");
+            active1.setStatus("active");
+            Employee active2 = new Employee();
+            active2.setId("emp-2");
+            active2.setStatus("active");
+            Employee inactive = new Employee();
+            inactive.setId("emp-3");
+            inactive.setStatus("inactive");
+
             when(departmentRepository.findAll()).thenReturn(List.of(dept));
-            when(employeeRepository.countByDepartmentId("dept-1")).thenReturn(10L);
+            when(employeeRepository.findByDepartmentId("dept-1")).thenReturn(List.of(active1, active2, inactive));
 
             List<Map<String, Object>> result = reportService.getEmployeesByDepartment();
             assertEquals(1, result.size());
             assertEquals("Engineering", result.get(0).get("department"));
-            assertEquals(10L, result.get(0).get("count"));
+            assertEquals(3, result.get(0).get("employee_count"));
+            assertEquals(2L, result.get(0).get("active_count"));
+            assertEquals(1L, result.get(0).get("inactive_count"));
         }
 
         @Test
         @DisplayName("getAttendanceSummary calculates stats")
         void getAttendanceSummary() {
             Attendance present = new Attendance();
+            present.setEmployeeId("emp-1");
             present.setStatus("present");
             Attendance absent = new Attendance();
+            absent.setEmployeeId("emp-2");
             absent.setStatus("absent");
 
-            when(attendanceRepository.findByDateBetween(any(), any())).thenReturn(List.of(present, present, absent));
-            when(departmentRepository.findAll()).thenReturn(List.of());
+            Department dept = new Department();
+            dept.setId("dept-1");
+            dept.setName("Engineering");
 
-            Map<String, Object> result = reportService.getAttendanceSummary(LocalDate.now(), LocalDate.now());
-            assertEquals(3L, result.get("totalRecords"));
-            assertEquals(2L, result.get("present"));
-            assertEquals(1L, result.get("absent"));
-            assertEquals(67L, result.get("attendancePercent"));
+            Employee emp1 = new Employee();
+            emp1.setId("emp-1");
+            Employee emp2 = new Employee();
+            emp2.setId("emp-2");
+
+            when(attendanceRepository.findByDateBetween(any(), any())).thenReturn(List.of(present, present, absent));
+            when(departmentRepository.findAll()).thenReturn(List.of(dept));
+            when(employeeRepository.findByDepartmentId("dept-1")).thenReturn(List.of(emp1, emp2));
+
+            List<Map<String, Object>> result = reportService.getAttendanceSummary(LocalDate.now(), LocalDate.now());
+            assertEquals(1, result.size());
+            assertEquals("Engineering", result.get(0).get("department"));
+            assertEquals(3L, result.get(0).get("total_attendance"));
+            assertEquals(2L, result.get(0).get("present"));
+            assertEquals(1L, result.get(0).get("absent"));
+            assertEquals(67L, result.get(0).get("attendance_percentage"));
         }
 
         @Test
@@ -958,29 +985,33 @@ class ServiceTests {
             when(attendanceRepository.findByDateBetween(any(), any())).thenReturn(List.of());
             when(departmentRepository.findAll()).thenReturn(List.of());
 
-            Map<String, Object> result = reportService.getAttendanceSummary(LocalDate.now(), LocalDate.now());
-            assertEquals(0L, result.get("totalRecords"));
-            assertEquals(0L, result.get("attendancePercent"));
+            List<Map<String, Object>> result = reportService.getAttendanceSummary(LocalDate.now(), LocalDate.now());
+            assertTrue(result.isEmpty());
         }
 
         @Test
         @DisplayName("getLeaveSummary counts by type and status")
         void getLeaveSummary() {
             when(leaveRepository.countByTypeAndStatus("Annual", "approved")).thenReturn(5L);
+            when(leaveRepository.countByTypeAndStatus("Annual", "rejected")).thenReturn(1L);
+            when(leaveRepository.countByTypeAndStatus("Annual", "pending")).thenReturn(2L);
             when(leaveRepository.countByTypeAndStatus("Sick", "approved")).thenReturn(3L);
+            when(leaveRepository.countByTypeAndStatus("Sick", "rejected")).thenReturn(0L);
+            when(leaveRepository.countByTypeAndStatus("Sick", "pending")).thenReturn(1L);
             when(leaveRepository.countByTypeAndStatus("Casual", "approved")).thenReturn(2L);
-            when(leaveRepository.countByStatus("pending")).thenReturn(4L);
-            when(leaveRepository.countByStatus("approved")).thenReturn(10L);
-            when(leaveRepository.countByStatus("rejected")).thenReturn(1L);
+            when(leaveRepository.countByTypeAndStatus("Casual", "rejected")).thenReturn(0L);
+            when(leaveRepository.countByTypeAndStatus("Casual", "pending")).thenReturn(0L);
 
-            Map<String, Object> result = reportService.getLeaveSummary();
-            assertEquals(5L, result.get("annual"));
-            assertEquals(3L, result.get("sick"));
-            assertEquals(2L, result.get("casual"));
-            assertEquals(4L, result.get("pending"));
-            assertEquals(10L, result.get("approved"));
-            assertEquals(1L, result.get("rejected"));
-            assertEquals(10L, result.get("total"));
+            List<Map<String, Object>> result = reportService.getLeaveSummary();
+            assertEquals(3, result.size());
+
+            Map<String, Object> annual = result.get(0);
+            assertEquals("Annual", annual.get("type"));
+            assertEquals(8L, annual.get("total_applied"));
+            assertEquals(5L, annual.get("approved"));
+            assertEquals(1L, annual.get("rejected"));
+            assertEquals(2L, annual.get("pending"));
+            assertEquals(25L, annual.get("total_days"));
         }
 
         @Test
@@ -990,23 +1021,30 @@ class ServiceTests {
             p1.setPayMonth(1);
             p1.setPayYear(2024);
             p1.setBasicPay(5000.0);
-            p1.setNetPay(5000.0);
+            p1.setAllowances(500.0);
+            p1.setNetPay(5300.0);
             p1.setDeductions(200.0);
 
             Payroll p2 = new Payroll();
             p2.setPayMonth(1);
             p2.setPayYear(2024);
             p2.setBasicPay(4000.0);
-            p2.setNetPay(4000.0);
+            p2.setAllowances(300.0);
+            p2.setNetPay(4200.0);
             p2.setDeductions(100.0);
 
             when(payrollRepository.findAll()).thenReturn(List.of(p1, p2));
 
-            Map<String, Object> result = reportService.getPayrollSummary();
-            assertEquals(9000.0, result.get("totalGross"));
-            assertEquals(9000.0, result.get("totalNet"));
-            assertEquals(300.0, result.get("totalDeductions"));
-            assertEquals(2, result.get("totalRecords"));
+            List<Map<String, Object>> result = reportService.getPayrollSummary();
+            assertEquals(1, result.size());
+            Map<String, Object> jan = result.get(0);
+            assertEquals(1, jan.get("month"));
+            assertEquals(2024, jan.get("year"));
+            assertEquals(2, jan.get("employee_count"));
+            assertEquals(9000.0, jan.get("total_basic"));
+            assertEquals(800.0, jan.get("total_allowances"));
+            assertEquals(300.0, jan.get("total_deductions"));
+            assertEquals(9500.0, jan.get("total_net_pay"));
         }
     }
 }

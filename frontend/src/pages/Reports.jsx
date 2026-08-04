@@ -12,7 +12,7 @@ export default function Reports() {
   const [tab, setTab] = useState(0)
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [dateRange, setDateRange] = useState({ start: monthStart(), end: today() })
+  const [dateRange, setDateRange] = useState({ startDate: monthStart(), endDate: today() })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,10 +79,10 @@ export default function Reports() {
 
       {tab === 1 && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <TextField type="date" size="small" label="Start" value={dateRange.start}
-            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} InputLabelProps={{ shrink: true }} />
-          <TextField type="date" size="small" label="End" value={dateRange.end}
-            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} InputLabelProps={{ shrink: true }} />
+          <TextField type="date" size="small" label="Start" value={dateRange.startDate}
+            onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })} InputLabelProps={{ shrink: true }} />
+          <TextField type="date" size="small" label="End" value={dateRange.endDate}
+            onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })} InputLabelProps={{ shrink: true }} />
         </Box>
       )}
 
