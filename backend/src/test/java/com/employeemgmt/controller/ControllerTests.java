@@ -74,7 +74,7 @@ class ControllerTests {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.token").value("token-123"))
                 .andExpect(jsonPath("$.role").value("ADMIN"));
     }
@@ -111,6 +111,13 @@ class ControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Admin"))
                 .andExpect(jsonPath("$.email").value("admin@test.com"));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/me without token returns 401")
+    void me_withoutAuth() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
     }
 
     // ==================== EmployeeController ====================
